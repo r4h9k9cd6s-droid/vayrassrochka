@@ -12,14 +12,19 @@ export async function makeTestApp(opts: { now?: () => Date } = {}) {
 }
 
 /** Небольшой «браузер» для тестов: помнит cookie между запросами. */
+let clientCounter = 0;
+export type App = ReturnType<typeof buildApp>;
+
 export class Client {
   private cookie = '';
+  private addr = `10.0.${Math.floor(++clientCounter / 250)}.${clientCounter % 250}`;
   constructor(private app: ReturnType<typeof buildApp>) {}
   async call(method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT', url: string, payload?: unknown) {
     const res = await this.app.inject({
       method,
       url,
       payload: payload as object | undefined,
+      remoteAddress: this.addr,
       headers: this.cookie ? { cookie: this.cookie } : {},
     });
     const set = res.headers['set-cookie'];

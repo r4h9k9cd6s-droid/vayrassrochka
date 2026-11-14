@@ -3,6 +3,8 @@ import Fastify from 'fastify';
 import { loadUser } from './auth.js';
 import type { Ctx } from './context.js';
 import { accountRoutes } from './routes/account.js';
+import { feedRoutes } from './routes/feed.js';
+import { installmentRoutes } from './routes/installments.js';
 
 export function buildApp(ctx: Ctx) {
   const app = Fastify({ logger: false, trustProxy: true, bodyLimit: 400_000 });
@@ -15,6 +17,8 @@ export function buildApp(ctx: Ctx) {
 
   app.get('/health', async () => ({ status: 'ok' }));
   accountRoutes(app, ctx);
+  installmentRoutes(app, ctx);
+  feedRoutes(app, ctx);
 
   return app;
 }
