@@ -100,4 +100,24 @@ describe('рассрочки', () => {
     await c.call('DELETE', `/api/installments/${id}`);
     expect((await c.call('GET', '/api/installments')).body.items).toHaveLength(0);
   });
+
+  it('рассрочка, которая уже идёт: прошлые платежи вносятся автоматически', async () => {
+    const { app } = await makeTestApp(); // сегодня 2026-03-10; платежи 15 фев, 15 мар, ...
+    const c = await login(app);
+    const r = await c.call('POST', '/api/installments', { ...item, alreadyPaidCount: 1 });
+    expect(r.status).toBe(201);
+    // внесён февральский платёж; мартовский ещё не просрочен
+    expect(r.body.state.totalPaid).toBe(20000 + 10000);
+    expect(r.body.state.remaining).toBe(50000);
+    expect(r.body.state.overdueAmount).toBe(0);
+    expect(r.body.state.nextPayment.dueDate).toBe('2026-03-15');
+    expect(r.body.events).toHaveLength(1);
+    // «уже внесено» больше, чем платежей в графике — ошибка
+    const bad = await c.call('POST', '/api/installments', { ...item, alreadyPaidCount: 7 });
+    expect(bad.body.error).toBe('already_paid_too_many');
+    // платежей внесено «вперёд» (больше, чем наступило) — всё равно по порядку, без просрочки
+    const ahead = await c.call('POST', '/api/installments', { ...item, alreadyPaidCount: 3 });
+    expect(ahead.body.state.overdueAmount).toBe(0);
+    expect(ahead.body.state.remaining).toBe(30000);
+  });
 });

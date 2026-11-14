@@ -2,6 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
+  buildOriginalSchedule,
   CATEGORIES,
   ICONS,
   computeInstallment,
@@ -42,6 +43,8 @@ const baseFields = {
   extraTerms: z.string().max(500).optional(),
   published: z.boolean().optional(),
   rightsConfirmed: z.boolean().optional(),
+  /** Только при добавлении: сколько платежей по графику уже внесено (рассрочка уже идёт). */
+  alreadyPaidCount: z.number().int().min(0).max(120).optional(),
 };
 
 export const toParams = (i: InstRow): InstallmentParams => ({
@@ -190,7 +193,24 @@ export function installmentRoutes(app: FastifyInstance, ctx: Ctx): void {
     };
     const err = paramsError(toParams(inst));
     if (err) return reply.code(400).send({ error: 'invalid_input', message: err });
+    const schedule = buildOriginalSchedule(toParams(inst));
+    const already = b.alreadyPaidCount ?? 0;
+    if (already > schedule.length) return reply.code(400).send({ error: 'already_paid_too_many' });
     await db.insert(schema.installments).values(inst);
+    // «Рассрочка уже идёт»: прошлые платежи записываются по графику, каждый — в свой срок (но не позже сегодня).
+    const today = todayFor(ctx, u.timezoneOffsetMin);
+    for (let i = 0; i < already; i++) {
+      const seg = schedule[i]!;
+      await db.insert(schema.installmentEvents).values({
+        id: newId(),
+        installmentId: inst.id,
+        type: 'payment',
+        date: seg.dueDate < today ? seg.dueDate : today,
+        amount: seg.amount,
+        segmentId: null,
+        createdAt: new Date(ctx.now().getTime() + i),
+      });
+    }
     return reply.code(201).send(await view(u, inst));
   });
 

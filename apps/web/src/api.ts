@@ -37,6 +37,7 @@ const ERRORS: Record<string, string> = {
   seller_required: 'Укажите название, адрес или телефон продавца.',
   rights_not_confirmed: 'Подтвердите, что вы вправе указать эти данные.',
   personal_not_publishable: 'Личную запись без продавца нельзя показать в ленте.',
+  already_paid_too_many: 'Платежей внесено больше, чем в графике.',
   down_payment_too_big: 'Первый взнос больше стоимости.',
   no_open_payments: 'Платить больше нечего.',
   skip_not_allowed: 'Пропустить можно только просроченный или ближайший платёж.',

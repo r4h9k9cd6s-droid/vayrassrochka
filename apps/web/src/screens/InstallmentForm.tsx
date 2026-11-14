@@ -11,12 +11,12 @@ interface Form {
   title: string; category: string; icon: string; iconManual: boolean; sellerType: 'shop' | 'person' | 'none';
   sellerName: string; sellerAddress: string; sellerPhone: string;
   cost: number; downPayment: number; termMonths: number; monthly: number; monthlyManual: boolean;
-  purchaseDate: string; paymentDay: number; extraTerms: string; published: boolean; rights: boolean;
+  purchaseDate: string; paymentDay: number; extraTerms: string; published: boolean; rights: boolean; ongoing: boolean; alreadyPaid: number;
 }
 const EMPTY = (): Form => ({
   title: '', category: 'other', icon: 'bag', iconManual: false, sellerType: 'shop', sellerName: '', sellerAddress: '', sellerPhone: '',
   cost: 0, downPayment: 0, termMonths: 6, monthly: 0, monthlyManual: false, purchaseDate: todayISO(), paymentDay: Math.min(28, new Date().getDate()),
-  extraTerms: '', published: true, rights: false,
+  extraTerms: '', published: true, rights: false, ongoing: false, alreadyPaid: 0,
 });
 const DRAFT = 'vr:draft:installment';
 const looksLikePersonName = (s: string) => /^[А-ЯЁ][а-яё]+(\s+[А-ЯЁ][а-яё.]*){1,2}$/.test(s.trim());
@@ -46,7 +46,7 @@ export function InstallmentForm() {
       title: i.title, category: i.category, icon: i.icon, iconManual: true, sellerType: i.sellerType as Form['sellerType'],
       sellerName: i.seller?.name ?? '', sellerAddress: i.seller?.address ?? '', sellerPhone: i.seller?.phone ?? '',
       cost: s.cost, downPayment: s.downPayment, termMonths: s.initialTermMonths, monthly: i.monthlyPayment ?? s.regularPayment, monthlyManual: i.monthlyPayment !== null,
-      purchaseDate: i.purchaseDate, paymentDay: i.paymentDay, extraTerms: i.extraTerms, published: i.published, rights: i.published,
+      purchaseDate: i.purchaseDate, paymentDay: i.paymentDay, extraTerms: i.extraTerms, published: i.published, rights: i.published, ongoing: false, alreadyPaid: 0,
     });
   }, [existing.data, editId]);
 
@@ -86,6 +86,7 @@ export function InstallmentForm() {
       monthlyPayment: f.monthlyManual && f.monthly !== auto ? f.monthly : null,
       purchaseDate: f.purchaseDate, paymentDay: f.paymentDay, extraTerms: f.extraTerms,
       published: publish, rightsConfirmed: publish && f.rights,
+      ...(!editId && f.ongoing && f.alreadyPaid > 0 ? { alreadyPaidCount: Math.min(f.alreadyPaid, f.termMonths) } : {}),
     };
     try {
       const r = editId ? await api<InstView>('PATCH', `/api/installments/${editId}`, body) : await api<InstView>('POST', '/api/installments', body);
@@ -126,6 +127,12 @@ export function InstallmentForm() {
         <Stepper label="Платёж в месяц, ₽" value={monthly} step={500} hint={f.monthlyManual ? 'Вы изменили платёж вручную' : `Считается: (стоимость − взнос) ÷ срок = ${money(auto)}`} onChange={(n) => set({ monthly: n, monthlyManual: true })} />
         {f.monthlyManual && <button type="button" className="btn g sm" onClick={() => set({ monthlyManual: false })}>Посчитать автоматически</button>}
         <Field label="Дата покупки"><input className="input" type="date" value={f.purchaseDate} onChange={(e) => set({ purchaseDate: e.target.value })} required /></Field>
+        {!editId && (
+          <div className="card stack">
+            <label className="check"><input type="checkbox" checked={f.ongoing} onChange={(e) => set({ ongoing: e.target.checked })} /><span><b>Рассрочка уже идёт</b><div className="muted">Вы уже вносили платежи по ней до того, как добавили её сюда.</div></span></label>
+            {f.ongoing && <Stepper label="Уже внесено платежей" value={f.alreadyPaid} step={1} min={0} max={f.termMonths} hint="Прошлые платежи отметятся оплаченными по графику. Первый взнос указывается отдельно выше." onChange={(n) => set({ alreadyPaid: n })} />}
+          </div>
+        )}
         <Stepper label="День платежа (число месяца)" value={f.paymentDay} step={1} min={1} max={31} onChange={(n) => set({ paymentDay: n })} />
         <Field label="Дополнительные условия" hint="Только условия сделки. Личные данные не вводите."><textarea className="input" value={f.extraTerms} onChange={(e) => set({ extraTerms: e.target.value })} maxLength={500} /></Field>
 
