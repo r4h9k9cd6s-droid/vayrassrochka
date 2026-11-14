@@ -1,9 +1,12 @@
 import { buildApp } from './app.js';
+import { loadConfig } from './config.js';
+import { createPostgresDb } from './db/index.js';
 
-const port = Number(process.env.PORT ?? 3000);
-const app = buildApp();
+const config = loadConfig();
+const { db } = await createPostgresDb(config.databaseUrl);
+const app = buildApp({ db, config, now: () => new Date() });
 
-app.listen({ port, host: '0.0.0.0' }).catch((err) => {
+app.listen({ port: config.port, host: '0.0.0.0' }).catch((err) => {
   console.error(err);
   process.exit(1);
 });
