@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "admin:create": "tsx src/cli/create-admin.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.5",

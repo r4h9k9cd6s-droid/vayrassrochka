@@ -5,6 +5,7 @@ import type { Ctx } from './context.js';
 import { accountRoutes } from './routes/account.js';
 import { feedRoutes } from './routes/feed.js';
 import { potRoutes } from './routes/pots.js';
+import { adminRoutes } from './routes/admin.js';
 import { homeRoutes } from './routes/home.js';
 import { pushRoutes } from './push.js';
 import { installmentRoutes } from './routes/installments.js';
@@ -25,6 +26,7 @@ export function buildApp(ctx: Ctx) {
   potRoutes(app, ctx);
   homeRoutes(app, ctx);
   pushRoutes(app, ctx);
+  adminRoutes(app, ctx);
 
   return app;
 }

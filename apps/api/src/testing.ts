@@ -16,7 +16,7 @@ let clientCounter = 0;
 export type App = ReturnType<typeof buildApp>;
 
 export class Client {
-  private cookie = '';
+  private jar = new Map<string, string>();
   private addr = `10.0.${Math.floor(++clientCounter / 250)}.${clientCounter % 250}`;
   constructor(private app: ReturnType<typeof buildApp>) {}
   async call(method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT', url: string, payload?: unknown) {
@@ -25,13 +25,14 @@ export class Client {
       url,
       payload: payload as object | undefined,
       remoteAddress: this.addr,
-      headers: this.cookie ? { cookie: this.cookie } : {},
+      headers: this.jar.size ? { cookie: [...this.jar].map(([k, v]) => `${k}=${v}`).join('; ') } : {},
     });
     const set = res.headers['set-cookie'];
-    const line = Array.isArray(set) ? set[0] : set;
-    if (line) {
-      const pair = line.split(';')[0]!;
-      this.cookie = pair.endsWith('=') ? '' : pair;
+    for (const line of Array.isArray(set) ? set : set ? [set] : []) {
+      const [pair] = line.split(';');
+      const [k, v = ''] = pair!.split('=');
+      if (v === '') this.jar.delete(k!);
+      else this.jar.set(k!, v);
     }
     return { status: res.statusCode, body: res.body ? (JSON.parse(res.body) as any) : null }; // eslint-disable-line @typescript-eslint/no-explicit-any
   }
