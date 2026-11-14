@@ -5,7 +5,7 @@ describe('аккаунт', () => {
   it('регистрация → код → вход → настройки → выход', async () => {
     const { app } = await makeTestApp();
     const c = new Client(app);
-    expect((await c.call('GET', '/api/me')).status).toBe(401);
+    expect((await c.call('GET', '/api/me')).body.user).toBeNull();
 
     const reg = await c.call('POST', '/api/auth/register', { login: 'Магомед', password: 'secret-pass-1' });
     expect(reg.status).toBe(201);
@@ -22,7 +22,7 @@ describe('аккаунт', () => {
     expect((await c.call('PATCH', '/api/me/settings', { theme: 'pink' })).status).toBe(400);
 
     await c.call('POST', '/api/auth/logout');
-    expect((await c.call('GET', '/api/me')).status).toBe(401);
+    expect((await c.call('GET', '/api/me')).body.user).toBeNull();
 
     const c2 = new Client(app);
     expect((await c2.call('POST', '/api/auth/login', { login: 'магомед', password: 'bad-password' })).status).toBe(401);
@@ -52,7 +52,7 @@ describe('аккаунт', () => {
     expect((await new Client(app).call('POST', '/api/auth/login', { login: 'user1', password: 'new-password' })).status).toBe(200);
     expect((await new Client(app).call('POST', '/api/auth/login', { login: 'user1', password: 'old-password' })).status).toBe(401);
     // старые сессии закрыты
-    expect((await c.call('GET', '/api/me')).status).toBe(401);
+    expect((await c.call('GET', '/api/me')).body.user).toBeNull();
   });
 
   it('новый код в настройках только после пароля', async () => {

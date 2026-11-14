@@ -29,6 +29,7 @@ export function publicUser(u: User) {
     reminderTime: u.reminderTime,
     avatar: u.avatar,
     welcomeSeen: u.welcomeSeen,
+    timezoneOffsetMin: u.timezoneOffsetMin,
   };
 }
 
@@ -101,10 +102,8 @@ export function accountRoutes(app: FastifyInstance, ctx: Ctx): void {
     return { backupCode };
   });
 
-  app.get('/api/me', async (req, reply) => {
-    const u = requireUser(req, reply);
-    if (!u) return;
-    return { user: publicUser(u) };
+  app.get('/api/me', async (req) => {
+    return { user: req.user ? publicUser(req.user) : null };
   });
 
   app.patch('/api/me/settings', async (req, reply) => {

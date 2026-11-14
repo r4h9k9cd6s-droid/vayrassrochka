@@ -1,0 +1,67 @@
+# Запуск: docker compose up -d --build   (после заполнения файла .env, см. docs/DEPLOY.md)
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vayrassrochka
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?задайте DB_PASSWORD в .env}
+      POSTGRES_DB: vayrassrochka
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vayrassrochka']
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgres://vayrassrochka:${DB_PASSWORD}@db:5432/vayrassrochka
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      DOMAIN: ${DOMAIN:-:80}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # Ежедневная копия базы в папку backups (затем её нужно отправлять на ОТДЕЛЬНОЕ хранилище, см. docs/DEPLOY.md)
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./backups:/backups
+      - ./deploy/backup.sh:/backup.sh:ro
+    entrypoint: ['/bin/bash', '/backup.sh']
+
+volumes:
+  dbdata:
+  caddy_data:
+  caddy_config:

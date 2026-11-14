@@ -1,12 +1,15 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
-import webpush from 'web-push';
+import { createRequire } from 'node:module';
+import type * as WebPush from 'web-push';
 import { z } from 'zod';
 import { requireUser } from './auth.js';
 import { type Ctx } from './context.js';
 import { schema } from './db/index.js';
 import { newId } from './security.js';
 import { buildHome } from './routes/home.js';
+
+const webpush = createRequire(import.meta.url)('web-push') as typeof WebPush;
 
 export interface PushPayload {
   title: string;
